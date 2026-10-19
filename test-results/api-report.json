@@ -1,0 +1,196 @@
+{
+  "base": "http://127.0.0.1:5173",
+  "at": "2026-10-18T14:38:33.422Z",
+  "total": 47,
+  "passed": 47,
+  "results": [
+    {
+      "name": "匿名读取受保护数据返回 401",
+      "status": "PASS"
+    },
+    {
+      "name": "伪造 Cookie 无法登录",
+      "status": "PASS"
+    },
+    {
+      "name": "跨站来源请求返回 403",
+      "status": "PASS"
+    },
+    {
+      "name": "错误密码返回 401",
+      "status": "PASS"
+    },
+    {
+      "name": "passenger01 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "passenger02 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "staffA 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "staffB 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "staffC 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "admin 可登录且角色来自服务端",
+      "status": "PASS"
+    },
+    {
+      "name": "管理员重置成功",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客不能修改设施",
+      "status": "PASS"
+    },
+    {
+      "name": "工作人员不能重置场景",
+      "status": "PASS"
+    },
+    {
+      "name": "重置需要确认文本",
+      "status": "PASS"
+    },
+    {
+      "name": "管理员设置设施故障并在其他设备可见",
+      "status": "PASS"
+    },
+    {
+      "name": "不合法求助被拒绝",
+      "status": "PASS"
+    },
+    {
+      "name": "故障接应站阻止方案提交",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客创建求助并持久保存",
+      "status": "PASS"
+    },
+    {
+      "name": "同一请求幂等，无重复任务",
+      "status": "PASS"
+    },
+    {
+      "name": "阻止重复活动求助",
+      "status": "PASS"
+    },
+    {
+      "name": "另一乘客看不到他人的任务和事件",
+      "status": "PASS"
+    },
+    {
+      "name": "另一乘客不能操作他人任务",
+      "status": "PASS"
+    },
+    {
+      "name": "交接前 B站不能查看或接单",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客发起人工关注演示队列",
+      "status": "PASS"
+    },
+    {
+      "name": "A站可接单",
+      "status": "PASS"
+    },
+    {
+      "name": "并发过期版本被拒绝",
+      "status": "PASS"
+    },
+    {
+      "name": "不允许跳过到场直接交接",
+      "status": "PASS"
+    },
+    {
+      "name": "工作人员准备完成后赶往现场",
+      "status": "PASS"
+    },
+    {
+      "name": "工作人员确认到场",
+      "status": "PASS"
+    },
+    {
+      "name": "跨站交接后 B站获得任务权限",
+      "status": "PASS"
+    },
+    {
+      "name": "C站仍无权限",
+      "status": "PASS"
+    },
+    {
+      "name": "交接未接收时不能完成",
+      "status": "PASS"
+    },
+    {
+      "name": "B站确认接收",
+      "status": "PASS"
+    },
+    {
+      "name": "原站不能代接收站完成",
+      "status": "PASS"
+    },
+    {
+      "name": "B站确认完成，等待乘客确认",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客确认后任务才完成",
+      "status": "PASS"
+    },
+    {
+      "name": "完整时间线包含所有阶段",
+      "status": "PASS"
+    },
+    {
+      "name": "新设备登录后可读取服务记录",
+      "status": "PASS"
+    },
+    {
+      "name": "完成任务禁止再次取消",
+      "status": "PASS"
+    },
+    {
+      "name": "两位工作人员同时接单只有一个成功",
+      "status": "PASS"
+    },
+    {
+      "name": "工作人员可退回待接单",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客可取消并停止接单",
+      "status": "PASS"
+    },
+    {
+      "name": "备选 C站方案也可提交",
+      "status": "PASS"
+    },
+    {
+      "name": "退出后会话失效",
+      "status": "PASS"
+    },
+    {
+      "name": "重置归档场景任务，清空当前视图",
+      "status": "PASS"
+    },
+    {
+      "name": "归档任务不能继续操作",
+      "status": "PASS"
+    },
+    {
+      "name": "演示结束准备 A站故障场景",
+      "status": "PASS"
+    }
+  ]
+}

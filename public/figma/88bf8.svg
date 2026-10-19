@@ -1,0 +1,23 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="12.6437" height="12.6437" viewBox="0 0 12.6437 12.6437" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Italic Text" filter="url(#filter0_d_0_61)">
+<g clip-path="url(#clip0_0_61)">
+<path d="M1.97557 6.32183C1.97557 3.92146 3.92146 1.97557 6.32183 1.97557V1.97557C8.72221 1.97557 10.6681 3.92146 10.6681 6.32183V6.32183C10.6681 8.72221 8.72221 10.6681 6.32183 10.6681V10.6681C3.92146 10.6681 1.97557 8.72221 1.97557 6.32183V6.32183Z" fill="white"/>
+<path id="Vector" d="M6.32183 1.97557C3.91897 1.97557 1.97557 3.91897 1.97557 6.32183C1.97557 8.72469 3.91897 10.6681 6.32183 10.6681C8.72469 10.6681 10.6681 8.72469 10.6681 6.32183C10.6681 3.91897 8.72469 1.97557 6.32183 1.97557ZM8.69365 4.98691L6.16661 7.47049C6.04243 7.59467 5.84375 7.59467 5.71957 7.47049L4.53987 6.31562C4.41569 6.19145 4.41569 5.99276 4.53987 5.87479C4.66405 5.75061 4.86273 5.75061 4.98691 5.87479L5.94309 6.80613L8.24661 4.53987C8.37079 4.41569 8.56947 4.41569 8.69365 4.53987C8.81783 4.66405 8.81783 4.86273 8.69365 4.98691Z" fill="#FF5A45"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_61" x="0" y="0" width="12.6437" height="12.6437" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feMorphology radius="1.97557" operator="dilate" in="SourceAlpha" result="effect1_dropShadow_0_61"/>
+<feOffset/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 0.439216 0 0 0 0 0.372549 0 0 0 0.133 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_61"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_61" result="shape"/>
+</filter>
+<clipPath id="clip0_0_61">
+<path d="M1.97557 6.32183C1.97557 3.92146 3.92146 1.97557 6.32183 1.97557V1.97557C8.72221 1.97557 10.6681 3.92146 10.6681 6.32183V6.32183C10.6681 8.72221 8.72221 10.6681 6.32183 10.6681V10.6681C3.92146 10.6681 1.97557 8.72221 1.97557 6.32183V6.32183Z" fill="white"/>
+</clipPath>
+</defs>
+</svg>
