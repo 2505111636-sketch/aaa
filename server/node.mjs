@@ -23,7 +23,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(url.pathname.startsWith('/api/')){
    const kind=url.pathname.slice(5);
-   if(req.method==='GET'&&!['state','insights'].includes(kind)||!['GET','POST'].includes(req.method)||!['login','logout','state','insights','tasks','action','admin'].includes(kind)||req.method==='POST'&&['state','insights'].includes(kind)){res.writeHead(404,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'接口不存在'}));return;}
+   if(req.method==='GET'&&!['state','insights'].includes(kind)||!['GET','POST'].includes(req.method)||!['login','logout','state','insights','tasks','action','admin','reset'].includes(kind)||req.method==='POST'&&['state','insights'].includes(kind)){res.writeHead(404,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'接口不存在'}));return;}
    let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4096){res.writeHead(413,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'提交内容过长'}));return;}chunks.push(chunk);}
    const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(', '):value);
    const request=new Request(url,{method:req.method,headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})});

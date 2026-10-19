@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:workers';
-import {demoAccounts,canView,transition,locations,needOptions,isUnassigned, type Task, type Account} from './model';
+import {demoAccounts,demoPassword,canView,transition,locations,needOptions,isUnassigned, type Task, type Account} from './model';
 import {summarize,periodStart,type Facility,type ServiceEvent} from './insights';
 const terminal=['completed','cancelled'];
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
@@ -27,10 +27,12 @@ export async function login(req:Request){
  const limit=await db().prepare('SELECT count FROM login_limits WHERE key=?').bind(key).first<{count:number}>();if((limit?.count||0)>15)throw new HttpError(429,'尝试次数较多，请在 10 分钟后重试');
  const a=demoAccounts.find(x=>x.id===b.username);const configured=(env as unknown as Record<string,string>).ADMIN_PASSWORD;
  const configuredHash=(env as unknown as Record<string,string>).ADMIN_PASSWORD_HASH;
- const expected=a?.role==='admin'?configured:'Route2026!';
- const valid=expected?await equal(b.password,expected):a?.role==='admin'&&/^[a-f0-9]{64}$/.test(configuredHash||'')&&await equal(await hash(b.password),configuredHash);
+ // The public experience administrator controls only this application's
+ // fictional dataset. The owner's admin secret stays server-side and private.
+ const expected=a?.id==='admin'?configured:demoPassword;
+ const valid=expected?await equal(b.password,expected):a?.id==='admin'&&/^[a-f0-9]{64}$/.test(configuredHash||'')&&await equal(await hash(b.password),configuredHash);
  if(!a||!valid)throw new HttpError(401,'账号或密码不正确');
- const token=crypto.randomUUID()+crypto.randomUUID();await db().batch([db().prepare('DELETE FROM sessions WHERE expires<?').bind(now),db().prepare('INSERT INTO sessions VALUES (?,?,?)').bind(await hash(token),a.id,now+12*3600000),db().prepare('DELETE FROM login_limits WHERE until<?').bind(now)]);await seed();
+ const token=crypto.randomUUID()+crypto.randomUUID();await db().batch([db().prepare('DELETE FROM sessions WHERE expires<?').bind(now),db().prepare('INSERT INTO sessions VALUES (?,?,?)').bind(await hash(token),a.id,now+12*3600000),db().prepare('DELETE FROM login_limits WHERE until<?').bind(now),db().prepare('DELETE FROM login_limits WHERE key=?').bind(key)]);await seed();
  return json({account:a},200,{'Set-Cookie':`rr_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${new URL(req.url).protocol==='https:'?'; Secure':''}`});
 }
 export async function logout(req:Request){sameOrigin(req);const raw=req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('rr_session='))?.slice(11);if(raw)await db().prepare('DELETE FROM sessions WHERE token=?').bind(await hash(raw)).run();return json({ok:true},200,{'Set-Cookie':'rr_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'});}
@@ -40,10 +42,21 @@ export async function state(req:Request){
  if(a.role==='passenger'){q+=' AND passenger=?';binds.push(a.id);}else if(a.role==='staff'){q+=" AND (origin=? OR (target=? AND status IN ('handoff_pending','handoff_received','awaiting_confirmation','completed')))";binds.push(a.station,a.station);}
  const selected=q+' ORDER BY created DESC,id DESC LIMIT 60';
  const eventQuery='SELECT * FROM events WHERE task IN ('+selected.replace('SELECT * FROM tasks','SELECT id FROM tasks')+') ORDER BY created,id';
- const results=await db().batch([db().prepare(selected).bind(...binds),db().prepare(eventQuery).bind(...binds),db().prepare('SELECT * FROM facilities ORDER BY id')]);
+ const results=await db().batch([db().prepare(selected).bind(...binds),db().prepare(eventQuery).bind(...binds),db().prepare('SELECT * FROM facilities ORDER BY id'),db().prepare("SELECT action AS id FROM audit WHERE id='scene-reset-marker'")]);
  const rows=results[0].results as unknown as Task[];
  const taskRows=rows.map(t=>({...t,unassigned:isUnassigned(t,Date.now())}));
- return json({account:a,facilities:results[2].results,tasks:taskRows,events:results[1].results,serverTime:Date.now(),simulation:true});
+ const resetVersion=(results[3].results[0] as {id:string}|undefined)?.id||'initial';
+ return json({account:a,facilities:results[2].results,tasks:taskRows,events:results[1].results,resetVersion,serverTime:Date.now(),simulation:true});
+}
+export async function resetScene(req:Request){
+ sameOrigin(req);const a=await account(req);const b=await body(req);
+ if(b.confirm!=='RESET_ALL')throw new HttpError(400,'请确认重新开始场景');
+ // All fixed experience identities have this explicitly shared reset ability.
+ // General facility management and analytics remain restricted to admins.
+ if(!demoAccounts.some(x=>x.id===a.id))throw new HttpError(403,'当前账号不能重置体验数据');
+ await seed();const version=crypto.randomUUID(),now=Date.now();
+ await db().batch([db().prepare('DELETE FROM events'),db().prepare('DELETE FROM tasks'),db().prepare("UPDATE facilities SET status=CASE WHEN id='A-E2' THEN 'fault' ELSE 'healthy' END,updated=?").bind(now),db().prepare('INSERT INTO audit VALUES (?,?,?,?)').bind(version,a.id,'重置全部体验数据',now),db().prepare('INSERT INTO audit VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET actor=excluded.actor,action=excluded.action,created=excluded.created').bind('scene-reset-marker',a.id,version,now)]);
+ return json({ok:true,resetVersion:version});
 }
 export async function createTask(req:Request){
  sameOrigin(req);const a=await account(req);if(a.role!=='passenger')throw new HttpError(403,'仅乘客可提交求助');const b=await body(req);
@@ -81,4 +94,4 @@ export async function admin(req:Request){
  await db().batch([db().prepare('INSERT INTO events SELECT lower(hex(randomblob(16))),id,?,?,? FROM tasks WHERE archived=0').bind(a.id,'管理员重置演示场景，记录已归档',now),db().prepare("UPDATE tasks SET archived=1,status=CASE WHEN status IN ('completed','cancelled') THEN status ELSE 'cancelled' END,version=version+1,updated=? WHERE archived=0").bind(now),db().prepare("UPDATE facilities SET status='healthy',updated=?").bind(now),db().prepare('INSERT INTO audit VALUES (?,?,?,?)').bind(crypto.randomUUID(),a.id,'重置演示场景并归档任务',now)]);
  }else throw new HttpError(400,'未知管理操作');return json({ok:true});
 }
-export async function handle(req:Request,kind:string){try{if(kind==='login')return await login(req);if(kind==='logout')return await logout(req);if(kind==='state')return await state(req);if(kind==='insights')return await insights(req);if(kind==='tasks')return await createTask(req);if(kind==='action')return await act(req);if(kind==='admin')return await admin(req);return json({error:'接口不存在'},404);}catch(e){if(e instanceof HttpError)return json({error:e.message},e.status);console.error('Route Rescue API failure',e instanceof Error?e.message:'unknown');return json({error:'服务暂不可用，请稍后重试'},503);}}
+export async function handle(req:Request,kind:string){try{if(kind==='login')return await login(req);if(kind==='logout')return await logout(req);if(kind==='state')return await state(req);if(kind==='insights')return await insights(req);if(kind==='reset')return await resetScene(req);if(kind==='tasks')return await createTask(req);if(kind==='action')return await act(req);if(kind==='admin')return await admin(req);return json({error:'接口不存在'},404);}catch(e){if(e instanceof HttpError)return json({error:e.message},e.status);console.error('Route Rescue API failure',e instanceof Error?e.message:'unknown');return json({error:'服务暂不可用，请稍后重试'},503);}}

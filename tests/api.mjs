@@ -18,7 +18,7 @@ await check('错误密码返回 401',()=>req('anon','login',{username:'passenger
 for(const a of ['passenger01','passenger02','staffA','staffB','staffC','admin'])await check(`${a} 可登录且角色来自服务端`,async()=>{const b=await req(a,'login',{username:a,password:a==='admin'?adminPassword:'Route2026!'});assert.equal(b.account.id,a);});
 await check('管理员重置成功',()=>req('admin','admin',{action:'reset',confirm:'RESET'}));
 await check('乘客不能修改设施',()=>req('passenger01','admin',{action:'facility',id:'A-E2',status:'fault'},403));
-await check('工作人员不能重置场景',()=>req('staffA','admin',{action:'reset',confirm:'RESET'},403));
+await check('工作人员不能调用管理员归档接口',()=>req('staffA','admin',{action:'reset',confirm:'RESET'},403));
 await check('重置需要确认文本',()=>req('admin','admin',{action:'reset'},400));
 await check('管理员设置设施故障并在其他设备可见',async()=>{await req('admin','admin',{action:'facility',id:'A-E2',status:'fault'});assert.equal((await state('passenger01')).facilities.find(f=>f.id==='A-E2').status,'fault');});
 await check('不合法求助被拒绝',()=>req('passenger01','tasks',{id:crypto.randomUUID(),location:'真实未知位置',needs:[],plan:'next',note:''},400));

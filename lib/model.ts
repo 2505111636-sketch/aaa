@@ -1,11 +1,14 @@
 export const stations:Record<string,string> = {A:'中央车站',B:'东湖广场',C:'市民中心'};
+export const publicAdminAccount='demoAdmin';
+export const demoPassword='Route2026!';
 export const demoAccounts = [
   {id:'passenger01',role:'passenger',name:'林晓',station:''},
   {id:'passenger02',role:'passenger',name:'周宁',station:''},
   {id:'staffA',role:'staff',name:'陈雨 · A站服务',station:'A'},
   {id:'staffB',role:'staff',name:'苏禾 · B站服务',station:'B'},
   {id:'staffC',role:'staff',name:'沈航 · C站服务',station:'C'},
-  {id:'admin',role:'admin',name:'服务管理员',station:''}
+  {id:'admin',role:'admin',name:'服务管理员',station:''},
+  {id:publicAdminAccount,role:'admin',name:'体验管理员',station:''}
 ];
 export type Account = typeof demoAccounts[number];
 export type Task = {id:string;passenger:string;location:string;needs:string;note:string;plan:string;origin:string;target:string;status:string;assigned:string|null;receiver:string|null;escalated:number;archived:number;version:number;last_event:string;created:number;updated:number;unassigned?:boolean};
