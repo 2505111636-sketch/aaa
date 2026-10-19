@@ -1,0 +1,15 @@
+node_modules
+.git
+.dev.vars*
+.env*
+.wrangler
+.sites-runtime
+.vinext
+.next
+dist
+dist-standalone
+data
+test-results
+design/downloads.json
+scripts/download-figma.mjs
+*.tsbuildinfo

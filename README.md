@@ -4,6 +4,8 @@
 
 正式入口：https://route-rescue-accessible.red-sage-5554.chatgpt.site
 
+访问说明：浏览器已可打开并登录，当前命令行网络受到 Cloudflare 403 拦截。比赛网络可达性须赛前实测；仓库另外提供 [独立 Node.js + SQLite / Docker 部署](docs/SELF-HOST.md)，可部署到自己的服务器。
+
 | 入口 | 账号 | 演示密码 |
 | --- | --- | --- |
 | `/passenger` 乘客端 | passenger01 / passenger02 | Route2026! |
@@ -61,3 +63,5 @@ React 19 + TypeScript + Vinext/Vite + Cloudflare Workers + D1 SQLite。数据库
 主要代码：`app/rescue-app.tsx` 界面与交互；`app/globals.css` 样式；`lib/model.ts` 状态机；`lib/server.ts` 服务端；`db/schema.ts` 数据模型；`drizzle/` 数据库迁移；`tests/` 自动化用例。
 
 设计还原细节见 [docs/DESIGN.md](docs/DESIGN.md)。部署、公开访问验收、维护和独立 Cloudflare 部署方案见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
+自建服务器运行：`npm run build:standalone` 后设置 ADMIN_PASSWORD 并执行 `npm run start:standalone`。默认端口 3000，SQLite 文件保存在 data/。完整 Docker、HTTPS 与持久化说明见 [docs/SELF-HOST.md](docs/SELF-HOST.md)。

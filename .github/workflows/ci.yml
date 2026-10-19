@@ -18,3 +18,36 @@ jobs:
       - run: npx tsc --noEmit
       - run: node tests/model.mjs
       - run: npm run build
+      - run: npm run build:standalone
+      - name: Test standalone shared API
+        env:
+          ADMIN_PASSWORD: CI-local-only-test-password
+          BASE_URL: http://127.0.0.1:3000
+        run: |
+          node server/node.mjs > /tmp/route-rescue.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node tests/api.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-test-report
+          path: test-results/api-report.json
+  live-check:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check public deployed service
+        run: node tests/live-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-site-test-report
+          path: test-results/live-report.json
