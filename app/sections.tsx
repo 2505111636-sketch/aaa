@@ -1,4 +1,5 @@
 'use client';
+import {api} from '../lib/browser-api';
 import {useEffect,useState,type ReactNode} from 'react';
 import {ArrowUpRight,ChevronRight,UserRound,Heart,MapPin,ShieldCheck,History,Settings2,LifeBuoy,LogOut,Route,Activity,BarChart3,RefreshCw,Accessibility,Bookmark} from 'lucide-react';
 import {stations,statusNames,needOptions,type Account,type Task} from '../lib/model';
@@ -19,12 +20,54 @@ export function Home({account,data,go}:{account:Account;data:Data|null;go:Go}){
  {account.role==='admin'&&<ArchiveProfileStats go={go}/>}<Box><div className="section-title"><span className="icon-disc"><Activity size={23}/></span><div><h2>{account.role==='passenger'?'此刻的旅程':'服务工作台'}</h2><p>与工作人员和乘客保持同步</p></div></div><div className="home-counts"><div><strong>{active.length}</strong><span>当前进行中</span></div><div><strong>{tasks.filter(t=>t.status==='completed').length}</strong><span>近期已完成</span></div><div><strong>{data?.facilities.filter(f=>f.status==='healthy').length||0}/{data?.facilities.length||0}</strong><span>设施可通行</span></div></div><button className="button primary" onClick={()=>go(work)}>{active.length?'继续查看服务进度':account.role==='admin'?'进入管理工作台':account.role==='staff'?'查看本站接应任务':'查看当前行程'} <ArrowUpRight size={18}/></button></Box>
  <Box className="care-card"><Heart size={23}/><div><h2>不必独自应对行程变化</h2><p>确认位置、表达需求，接应服务会陪你走完下一程。</p></div></Box><Menu icon={<UserRound size={21}/>} label="完善你的出行偏好" detail="在“我的”中管理常用需求与阅读设置" onClick={()=>go('preferences')}/></>;
 }
-function ArchiveProfileStats({go}:{go:Go}){
- const [data,setData]=useState<Insights|null>(null),[error,setError]=useState(false),[retry,setRetry]=useState(0);
- useEffect(()=>{const controller=new AbortController();setError(false);void fetch('/api/insights?source=archive&days=7',{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();return await r.json() as Insights;}).then(value=>{if(!controller.signal.aborted)setData(value);}).catch(()=>{if(!controller.signal.aborted)setError(true);});return()=>controller.abort();},[retry]);
- if(error)return <Box><p>运营摘要暂时不可用</p><button className="text-button" onClick={()=>setRetry(n=>n+1)}>重新加载</button></Box>;
- if(!data)return <Box><p role="status">正在读取运营摘要…</p></Box>;
- return <Box className="profile-stats archive-profile"><p className="archive-profile-label">近7天运营档案 · 截至 {data.through?.slice(5).replace('-','/')}</p>{[[data.summary.requests,'服务请求'],[data.summary.completed,'已完成服务'],[data.summary.handoffs,'跨站接应']].map(([value,label])=><button key={label} onClick={()=>go('overview')}><strong>{value}</strong><span>{label}</span></button>)}</Box>;
+function ArchiveProfileStats({ go }: { go: Go }) {
+  const [data, setData] = useState<Insights | null>(null);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setError(false);
+    void api('insights?source=archive&days=7', undefined, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setData(value);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setError(true);
+      });
+    return () => controller.abort();
+  }, [retry]);
+  if (error)
+    return (
+      <Box>
+        <p>运营摘要暂时不可用</p>
+        <button className="text-button" onClick={() => setRetry((n) => n + 1)}>
+          重新加载
+        </button>
+      </Box>
+    );
+  if (!data)
+    return (
+      <Box>
+        <p role="status">正在读取运营摘要…</p>
+      </Box>
+    );
+  return (
+    <Box className="profile-stats archive-profile">
+      <p className="archive-profile-label">
+        近7天运营档案 · 截至 {data.through?.slice(5).replace('-', '/')}
+      </p>
+      {[
+        [data.summary.requests, '服务请求'],
+        [data.summary.completed, '已完成服务'],
+        [data.summary.handoffs, '跨站接应'],
+      ].map(([value, label]) => (
+        <button key={label} onClick={() => go('overview')}>
+          <strong>{value}</strong>
+          <span>{label}</span>
+        </button>
+      ))}
+    </Box>
+  );
 }
 export function Profile({account,data,go,onLogout}:{account:Account;data:Data|null;go:Go;onLogout:()=>void}){
  const tasks=data?.tasks||[];
@@ -36,7 +79,7 @@ export function Profile({account,data,go,onLogout}:{account:Account;data:Data|nu
 export function ProfileDetails({account,go}:{account:Account;go:Go}){return <><button className="back" onClick={()=>go('mine')}>← 返回我的</button><Box><div className="profile-avatar centered">{account.name[0]}</div><h2 className="centered-text">{account.name.split(' · ')[0]}</h2><dl className="profile-details">{[['姓名',account.name.split(' · ')[0]],['身份',roleName(account)],['账号',account.id],['服务编号',codes[account.id]],[account.role==='admin'?'管理范围':'服务站点',account.role==='admin'?'中央车站 / 东湖广场 / 市民中心':account.station?stations[account.station]+' · '+account.station+'站':'中央车站 → 市民中心'],['账号状态','已登录 · 会话受保护']].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></Box><div className="notice"><ShieldCheck size={18}/>个人资料为竞赛展示角色，不收集真实身份信息。</div></>;}
 export function PreferencesView({value,onChange,go}:{value:Preferences;onChange:(value:Preferences)=>void;go:Go}){return <><button className="back" onClick={()=>go('mine')}>← 返回我的</button><Box><div className="section-title"><span className="icon-disc"><Accessibility size={23}/></span><div><h2>常用出行需求</h2><p>下次确认求助时自动为你选中</p></div></div><div className="needs-grid">{needOptions.map(n=><label key={n}><input type="checkbox" checked={value.needs.includes(n)} onChange={()=>onChange({...value,needs:value.needs.includes(n)?value.needs.filter(x=>x!==n):[...value.needs,n]})}/>{n}</label>)}</div></Box><Box><h2>阅读与显示</h2>{[['largeText','大字模式','放大页面文字，阅读更轻松'],['contrast','高对比度','加强文字、按钮与背景的对比']].map(([key,label,detail])=><label className="preference-row" key={key}><span><strong>{label}</strong><small>{detail}</small></span><input role="switch" type="checkbox" checked={Boolean(value[key as keyof Preferences])} onChange={e=>onChange({...value,[key]:e.target.checked})}/></label>)}</Box><button className="reset-selection" type="button" onClick={()=>onChange({...defaultPreferences,needs:[...defaultPreferences.needs]})}>↺ 恢复默认设置</button><div className="notice"><Settings2 size={18}/>更改即时生效，并按当前账号保存在这台设备中。</div></>;}
 export function SavedTrips({value,onChange,go}:{value:Preferences;onChange:(value:Preferences)=>void;go:Go}){return <><button className="back" onClick={()=>go('mine')}>← 返回我的</button>{value.saved?<Box><div className="section-title"><span className="icon-disc"><MapPin size={23}/></span><div><h2>中央车站 → 市民中心</h2><p>1号线 · 经东湖广场</p></div><span className="badge">常用</span></div><div className="tags">{value.needs.map(n=><span key={n}>{n}</span>)}</div><button className="button primary spaced" onClick={()=>go('journey')}>查看本次行程 <ArrowUpRight size={18}/></button><button className="text-button" onClick={()=>onChange({...value,saved:false})}>移除常用行程</button></Box>:<Box className="empty"><Bookmark size={34}/><h2>还没有常用行程</h2><p>将当前路线加入常用，下次从这里快速查看。</p><button className="button primary" onClick={()=>onChange({...value,saved:true})}>收藏中央车站 → 市民中心</button></Box>}</>;}
-export function Help({go,about=false}:{go:Go;about?:boolean}){return about?<><button className="back" onClick={()=>go('help')}>← 返回帮助中心</button><Box className="about-brand"><img src="/figma/60dd8.png" alt=""/><h2>Route Rescue</h2><p>让中断的行程，重新连接。</p><span className="badge">协同服务系统 · 2.0</span></Box><Box><h2>作品与数据说明</h2><p>本作品用于数字媒体科技竞赛展示。站点、设施、路线、预计时间及人物资料均为虚构设定；管理员运营档案为预设的历史服务资料，用于展示统计与分析；本轮接应请求与服务进度真实保存在本系统数据库中。</p><p>系统未接入实际地铁接口、室内定位、车辆调度、电话、短信或控制中心。位置由使用者手动确认，路线与距离为预设参考。</p><p>真实出行遇到困难，请联系车站现场服务人员。请勿在公开体验账号中提交真实个人信息。</p></Box><Box><h2>隐私与权限</h2><p>乘客仅可查看自己的服务记录；工作人员按站点与交接阶段访问任务；总体数据和设施管理仅向管理员开放。</p><p>不同设备使用各自账号登录，共享同一服务任务。退出账号后会话立即失效。</p></Box></>:<><Box className="help-banner"><span className="icon-disc"><LifeBuoy size={28}/></span><h2>有什么可以帮到你？</h2><p>从发起求助到安心抵达，了解每一步。</p></Box><Box><h2>接应服务怎么使用</h2><ol className="help-steps">{[['查看行程','了解沿线设施状态，选择恢复方案。'],['确认需求','手动确认当前位置，勾选通行需求。'],['协同接应','源站接单并到场，目标站确认接收。'],['完成确认','工作人员完成接应后，由乘客确认结果。']].map(([title,text],i)=><li key={title}><b>{i+1}</b><div><h3>{title}</h3><p>{text}</p></div></li>)}</ol><button className="button primary" onClick={()=>go('journey')}>查看我的旅程 <ArrowUpRight size={18}/></button></Box><Box><h2>常见问题</h2>{[['一直没有人接单怎么办？','等待超过2分钟后会显示无人接单提示。你可以发起系统内人工关注，也可以取消并重新选择方案。此操作不会拨打电话或联系实际控制中心。'],['如何查看跨站交接进展？','工作人员发送交接后，旅程页面会显示等待目标站接收。目标站确认后，进度和时间线会自动更新。'],['刷新页面会丢失记录吗？','服务记录保存在服务器数据库中，登录同一账号可继续查看。点击“一键重置”会清空全部体验账号的服务记录与页面选择，所有设备同步重新开始。'],['如何同时体验乘客和工作人员？','请在不同设备、浏览器或独立无痕窗口登录。乘客使用 passenger01 或 passenger02，工作人员使用 staffA、staffB 或 staffC，体验密码均为 Route2026!。']].map(([q,a])=><details className="faq" key={q}><summary>{q}</summary><p>{a}</p></details>)}</Box><Menu icon={<ShieldCheck size={21}/>} label="系统说明与数据来源" detail="了解作品范围与隐私保护" onClick={()=>go('about')}/></>;}
+export function Help({go,about=false}:{go:Go;about?:boolean}){return about?<><button className="back" onClick={()=>go('help')}>← 返回帮助中心</button><Box className="about-brand"><img src="/figma/60dd8.png" alt=""/><h2>Route Rescue</h2><p>让中断的行程，重新连接。</p><span className="badge">协同服务系统 · 2.0</span></Box><Box><h2>作品与数据说明</h2><p>本作品用于数字媒体科技竞赛展示。站点、设施、路线、预计时间及人物资料均为虚构设定；管理员运营档案为预设的历史服务资料，用于展示统计与分析；本轮接应请求与服务进度真实保存在本系统数据库中。</p><p>系统未接入实际地铁接口、室内定位、车辆调度、电话、短信或控制中心。位置由使用者手动确认，路线与距离为预设参考。</p><p>真实出行遇到困难，请联系车站现场服务人员。请勿在公开体验账号中提交真实个人信息。</p></Box><Box><h2>隐私与权限</h2><p>乘客仅可查看自己的服务记录；工作人员按站点与交接阶段访问任务；总体数据和设施管理仅向管理员开放。</p><p>不同设备使用各自账号登录，共享同一服务任务。退出账号后会话立即失效。</p></Box></>:<><Box className="help-banner"><span className="icon-disc"><LifeBuoy size={28}/></span><h2>有什么可以帮到你？</h2><p>从发起求助到安心抵达，了解每一步。</p></Box><Box><h2>接应服务怎么使用</h2><ol className="help-steps">{[['查看行程','了解沿线设施状态，选择恢复方案。'],['确认需求','手动确认当前位置，勾选通行需求。'],['协同接应','源站接单并到场，目标站确认接收。'],['完成确认','工作人员完成接应后，由乘客确认结果。']].map(([title,text],i)=><li key={title}><b>{i+1}</b><div><h3>{title}</h3><p>{text}</p></div></li>)}</ol><button className="button primary" onClick={()=>go('journey')}>查看我的旅程 <ArrowUpRight size={18}/></button></Box><Box><h2>常见问题</h2>{[['一直没有人接单怎么办？','等待超过2分钟后会显示无人接单提示。你可以发起系统内人工关注，也可以取消并重新选择方案。此操作不会拨打电话或联系实际控制中心。'],['如何查看跨站交接进展？','工作人员发送交接后，旅程页面会显示等待目标站接收。目标站确认后，进度和时间线会自动更新。'],['刷新页面会丢失记录吗？','服务记录保存在服务器数据库中，登录同一账号可继续查看。点击“一键重置”会清空全部体验账号的服务记录与页面选择，所有设备同步重新开始。'],['如何同时体验乘客和工作人员？','请在同一浏览器分别打开乘客端和工作人员端。两个标签页可独立登录，任务与服务进度共享。乘客使用 passenger01 或 passenger02，工作人员使用 staffA、staffB 或 staffC，体验密码均为 Route2026!。']].map(([q,a])=><details className="faq" key={q}><summary>{q}</summary><p>{a}</p></details>)}</Box><Menu icon={<ShieldCheck size={21}/>} label="系统说明与数据来源" detail="了解作品范围与隐私保护" onClick={()=>go('about')}/></>;}
 function Trend({data}:{data:Insights['daily']}){
  const width=320,height=155,pad=24,max=Math.max(1,...data.map(d=>d.requested));
  const x=(i:number)=>pad+i*(width-pad*2)/Math.max(1,data.length-1),y=(n:number)=>height-pad-(height-pad*2)*n/max;

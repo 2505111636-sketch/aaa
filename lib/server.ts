@@ -7,8 +7,31 @@ export class HttpError extends Error { constructor(public status:number,message:
 function db(){if(!env.DB)throw new HttpError(503,'数据库暂不可用，请稍后重试');return env.DB;}
 async function hash(value:string){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function equal(a:string,b:string){const x=await hash(a),y=await hash(b);let n=0;for(let i=0;i<x.length;i++)n|=x.charCodeAt(i)^y.charCodeAt(i);return n===0;}
+export function sessionCookieName(req: Request) {
+  const context = req.headers.get('x-route-session');
+  // Older API clients retain their existing cookie. Browser pages always send
+  // an explicit tab context and never fall back to another tab's identity.
+  if (context === null) return 'rr_session';
+  if (
+    !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.[A-Za-z0-9_-]{1,30}$/.test(
+      context,
+    )
+  ) {
+    throw new HttpError(400, '页面会话标识无效，请刷新后重试');
+  }
+  return `rr_session.${context}`;
+}
+export function sessionToken(req: Request) {
+  const prefix = sessionCookieName(req) + '=';
+  return req.headers
+    .get('cookie')
+    ?.split(';')
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix))
+    ?.slice(prefix.length);
+}
 export async function account(req:Request):Promise<Account>{
-  const raw=req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('rr_session='))?.slice(11);
+  const raw=sessionToken(req);
   if(!raw||raw.length>100)throw new HttpError(401,'请先登录账号');
   const s=await db().prepare('SELECT account FROM sessions WHERE token=? AND expires>?').bind(await hash(raw),Date.now()).first<{account:string}>();
   const a=demoAccounts.find(x=>x.id===s?.account);if(!a)throw new HttpError(401,'登录已过期，请重新登录');return a;
@@ -22,7 +45,7 @@ async function seed(){if(!seeding)seeding=db().batch([
  db().prepare("INSERT OR IGNORE INTO facilities VALUES ('B-E1','B','1号电梯','healthy',?)").bind(Date.now()),
  db().prepare("INSERT OR IGNORE INTO facilities VALUES ('C-R1','C','无障碍坡道','healthy',?)").bind(Date.now())]).then(()=>{}).catch(error=>{seeding=undefined;throw error;});await seeding;}
 export async function login(req:Request){
- sameOrigin(req);const b=await body(req);if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>30||b.password.length>128)throw new HttpError(400,'账号或密码格式无效');
+ sameOrigin(req);const cookieName=sessionCookieName(req);const b=await body(req);if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>30||b.password.length>128)throw new HttpError(400,'账号或密码格式无效');
  const key=await hash((req.headers.get('cf-connecting-ip')||'local')+':'+b.username);const now=Date.now();
  await db().prepare('INSERT INTO login_limits(key,count,until) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN until<? THEN 1 ELSE count+1 END,until=CASE WHEN until<? THEN ? ELSE until END').bind(key,now+600000,now,now,now+600000).run();
  const limit=await db().prepare('SELECT count FROM login_limits WHERE key=?').bind(key).first<{count:number}>();if((limit?.count||0)>15)throw new HttpError(429,'尝试次数较多，请在 10 分钟后重试');
@@ -34,9 +57,9 @@ export async function login(req:Request){
  const valid=expected?await equal(b.password,expected):a?.id==='admin'&&/^[a-f0-9]{64}$/.test(configuredHash||'')&&await equal(await hash(b.password),configuredHash);
  if(!a||!valid)throw new HttpError(401,'账号或密码不正确');
  const token=crypto.randomUUID()+crypto.randomUUID();await db().batch([db().prepare('DELETE FROM sessions WHERE expires<?').bind(now),db().prepare('INSERT INTO sessions VALUES (?,?,?)').bind(await hash(token),a.id,now+12*3600000),db().prepare('DELETE FROM login_limits WHERE until<?').bind(now),db().prepare('DELETE FROM login_limits WHERE key=?').bind(key)]);await seed();
- return json({account:a},200,{'Set-Cookie':`rr_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${new URL(req.url).protocol==='https:'?'; Secure':''}`});
+ return json({account:a},200,{'Set-Cookie':`${cookieName}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${new URL(req.url).protocol==='https:'?'; Secure':''}`});
 }
-export async function logout(req:Request){sameOrigin(req);const raw=req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('rr_session='))?.slice(11);if(raw)await db().prepare('DELETE FROM sessions WHERE token=?').bind(await hash(raw)).run();return json({ok:true},200,{'Set-Cookie':'rr_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0'});}
+export async function logout(req:Request){sameOrigin(req);const cookieName=sessionCookieName(req);const raw=sessionToken(req);if(raw)await db().prepare('DELETE FROM sessions WHERE token=?').bind(await hash(raw)).run();return json({ok:true},200,{'Set-Cookie':`${cookieName}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`});}
 export async function state(req:Request){
  const a=await account(req);await seed();
  let q='SELECT * FROM tasks WHERE archived=0';const binds:string[]=[];

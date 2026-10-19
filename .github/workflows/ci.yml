@@ -39,6 +39,7 @@ jobs:
           node tests/insights-api.mjs
           node tests/scene-reset.mjs
           node tests/operations-api.mjs
+          node tests/tab-sessions.mjs
       - run: npm run build:meoo
       - uses: actions/upload-artifact@v4
         with:
