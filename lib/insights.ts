@@ -23,4 +23,4 @@ export function summarize(tasks:Task[],events:ServiceEvent[],facilities:Facility
   facilities:{total:facilities.length,healthy:facilities.filter(f=>f.status==='healthy').length,fault:facilities.filter(f=>f.status==='fault').length,items:facilities},
  };
 }
-export type Insights=ReturnType<typeof summarize>;
+export type Insights=ReturnType<typeof summarize>&{source?:'archive'|'live';through?:string};

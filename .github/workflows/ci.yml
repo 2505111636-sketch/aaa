@@ -20,6 +20,7 @@ jobs:
       - run: node --test tests/cookies.test.mjs
       - run: node tests/request-id.mjs
       - run: node tests/insights.mjs
+      - run: node tests/operations-archive.mjs
       - run: npm run build
       - run: npm run build:standalone
       - name: Test standalone shared API
@@ -37,6 +38,7 @@ jobs:
           node tests/api.mjs
           node tests/insights-api.mjs
           node tests/scene-reset.mjs
+          node tests/operations-api.mjs
       - run: npm run build:meoo
       - uses: actions/upload-artifact@v4
         with:

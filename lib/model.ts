@@ -8,7 +8,7 @@ export const demoAccounts = [
   {id:'staffB',role:'staff',name:'苏禾 · B站服务',station:'B'},
   {id:'staffC',role:'staff',name:'沈航 · C站服务',station:'C'},
   {id:'admin',role:'admin',name:'服务管理员',station:''},
-  {id:publicAdminAccount,role:'admin',name:'体验管理员',station:''}
+  {id:publicAdminAccount,role:'admin',name:'许知远 · 运营管理',station:''}
 ];
 export type Account = typeof demoAccounts[number];
 export type Task = {id:string;passenger:string;location:string;needs:string;note:string;plan:string;origin:string;target:string;status:string;assigned:string|null;receiver:string|null;escalated:number;archived:number;version:number;last_event:string;created:number;updated:number;unassigned?:boolean};

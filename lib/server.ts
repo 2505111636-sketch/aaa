@@ -1,6 +1,7 @@
 import {env} from 'cloudflare:workers';
 import {demoAccounts,demoPassword,canView,transition,locations,needOptions,isUnassigned, type Task, type Account} from './model';
 import {summarize,periodStart,type Facility,type ServiceEvent} from './insights';
+import {archivedInsights} from './operations-archive';
 const terminal=['completed','cancelled'];
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 function db(){if(!env.DB)throw new HttpError(503,'数据库暂不可用，请稍后重试');return env.DB;}
@@ -71,10 +72,12 @@ export async function createTask(req:Request){
 export async function insights(req:Request){
  const a=await account(req);if(a.role!=='admin')throw new HttpError(403,'仅管理员可查看总体数据');
  const raw=new URL(req.url).searchParams.get('days')||'7';if(!['7','14','30'].includes(raw))throw new HttpError(400,'请选择 7、14 或 30 天');
+ const source=new URL(req.url).searchParams.get('source')||'live';if(!['archive','live'].includes(source))throw new HttpError(400,'请选择有效的数据范围');
  const days=Number(raw),now=Date.now(),start=periodStart(now,days)-days*86400000;await seed();
+ if(source==='archive'){const f=await db().prepare('SELECT * FROM facilities ORDER BY id').all<Facility>();return json(archivedInsights(days,f.results));}
  const scope='SELECT id FROM tasks WHERE created>=? OR archived=0';
  const result=await db().batch([db().prepare('SELECT * FROM tasks WHERE created>=? OR archived=0').bind(start),db().prepare('SELECT task,actor,label,created FROM events WHERE task IN ('+scope+') ORDER BY created').bind(start),db().prepare('SELECT * FROM facilities ORDER BY id')]);
- return json(summarize(result[0].results as unknown as Task[],result[1].results as unknown as ServiceEvent[],result[2].results as unknown as Facility[],now,days));
+ return json({...summarize(result[0].results as unknown as Task[],result[1].results as unknown as ServiceEvent[],result[2].results as unknown as Facility[],now,days),source:'live'});
 }
 export async function act(req:Request){
  sameOrigin(req);const a=await account(req);const b=await body(req);if(typeof b.id!=='string'||typeof b.action!=='string'||!Number.isInteger(b.version))throw new HttpError(400,'操作参数无效');
