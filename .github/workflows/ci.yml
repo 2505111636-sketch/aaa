@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: node tests/model.mjs
+      - run: node --test tests/cookies.test.mjs
       - run: npm run build
       - run: npm run build:standalone
       - name: Test standalone shared API

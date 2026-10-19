@@ -1,10 +1,11 @@
+import {mergeCookies} from './cookies.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 const base=process.env.BASE_URL||'http://127.0.0.1:5173';
 let adminPassword=process.env.ADMIN_PASSWORD;
 if(!adminPassword){try{adminPassword=(await fs.readFile('.dev.vars','utf8')).match(/ADMIN_PASSWORD="([^"]+)"/)[1];}catch{throw new Error('Set ADMIN_PASSWORD for this explicitly destructive demo test.');}}
 const results=[];const cookies={};
-async function req(who,path,data,expected=200,origin=base){const r=await fetch(base+'/api/'+path,{method:data===undefined?'GET':'POST',headers:{...(data===undefined?{}:{'Content-Type':'application/json',Origin:origin}),...(cookies[who]?{Cookie:cookies[who]}:{})},body:data===undefined?undefined:JSON.stringify(data)});const raw=await r.text();let b;try{b=JSON.parse(raw);}catch{b={error:raw};}assert.equal(r.status,expected,`${who} ${path}: ${JSON.stringify(b)}`);const set=r.headers.get('set-cookie');if(set)cookies[who]=set.split(';')[0];return b;}
+async function req(who,path,data,expected=200,origin=base){const r=await fetch(base+'/api/'+path,{method:data===undefined?'GET':'POST',headers:{...(data===undefined?{}:{'Content-Type':'application/json',Origin:origin}),...(cookies[who]?{Cookie:cookies[who]}:{})},body:data===undefined?undefined:JSON.stringify(data)});const raw=await r.text();let b;try{b=JSON.parse(raw);}catch{b={error:raw};}assert.equal(r.status,expected,`${who} ${path}: ${JSON.stringify(b)}`);cookies[who]=mergeCookies(cookies[who],r.headers.getSetCookie());return b;}
 async function check(name,fn){await fn();results.push({name,status:'PASS'});console.log('PASS '+name);}
 async function state(who){return req(who,'state');}
 async function task(who,id){return (await state(who)).tasks.find(t=>t.id===id);}
