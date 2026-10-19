@@ -1,5 +1,7 @@
 # Route Rescue 无障碍行程恢复协同系统
 
+新版补齐独立的首页、旅程/任务、帮助和个人中心，页头提供“一键重置选择”；管理员增加运营概览与服务分析两个页面。功能、统计口径和权限说明见 [界面优化记录](docs/UI-UPDATE.md)。
+
 Windows 现场交付可使用包含 Node.js 与 SQLite 的 [离线运行包](docs/PORTABLE.md)，完整解压后双击启动，无需安装依赖或连接云服务。维护者执行 `npm run build:standalone` 后，可用 `npm run package:portable -- --node=本机node.exe路径 --license=Node官方LICENSE路径 --source=源码ZIP路径` 生成文件夹；打包时不包含 data 目录和线上管理员凭据。
 
 无障碍服务：基于用户 Figma「无障碍出行」设计开发，面向全国大学生数字媒体科技作品及创意竞赛的移动与网络应用开发类赛项。第一版使用 3 个模拟站点、3 项模拟设施、虚拟乘客和工作人员信息。

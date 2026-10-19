@@ -1,5 +1,6 @@
 import {env} from 'cloudflare:workers';
 import {demoAccounts,canView,transition,locations,needOptions,isUnassigned, type Task, type Account} from './model';
+import {summarize,periodStart,type Facility,type ServiceEvent} from './insights';
 const terminal=['completed','cancelled'];
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 function db(){if(!env.DB)throw new HttpError(503,'数据库暂不可用，请稍后重试');return env.DB;}
@@ -7,7 +8,7 @@ async function hash(value:string){const b=await crypto.subtle.digest('SHA-256',n
 async function equal(a:string,b:string){const x=await hash(a),y=await hash(b);let n=0;for(let i=0;i<x.length;i++)n|=x.charCodeAt(i)^y.charCodeAt(i);return n===0;}
 export async function account(req:Request):Promise<Account>{
   const raw=req.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('rr_session='))?.slice(11);
-  if(!raw||raw.length>100)throw new HttpError(401,'请先登录演示账号');
+  if(!raw||raw.length>100)throw new HttpError(401,'请先登录账号');
   const s=await db().prepare('SELECT account FROM sessions WHERE token=? AND expires>?').bind(await hash(raw),Date.now()).first<{account:string}>();
   const a=demoAccounts.find(x=>x.id===s?.account);if(!a)throw new HttpError(401,'登录已过期，请重新登录');return a;
 }
@@ -54,6 +55,14 @@ export async function createTask(req:Request){
  try{await db().batch([db().prepare("INSERT INTO tasks (id,passenger,location,needs,note,plan,origin,target,status,assigned,receiver,escalated,archived,version,last_event,created,updated) VALUES (?,?,?,?,?,?,'A',?,'pending',NULL,NULL,0,0,1,?,?,?)").bind(b.id,a.id,b.location,JSON.stringify([...new Set(b.needs)]),b.note,b.plan,target,eventId,now,now),db().prepare('INSERT INTO events VALUES (?,?,?,?,?)').bind(eventId,b.id,a.id,'求助已提交，等待 A站工作人员接单',now)]);}catch{throw new HttpError(409,'求助已更新，请刷新服务进度后重试');}
  return json({id:b.id},201);
 }
+export async function insights(req:Request){
+ const a=await account(req);if(a.role!=='admin')throw new HttpError(403,'仅管理员可查看总体数据');
+ const raw=new URL(req.url).searchParams.get('days')||'7';if(!['7','14','30'].includes(raw))throw new HttpError(400,'请选择 7、14 或 30 天');
+ const days=Number(raw),now=Date.now(),start=periodStart(now,days)-days*86400000;await seed();
+ const scope='SELECT id FROM tasks WHERE created>=? OR archived=0';
+ const result=await db().batch([db().prepare('SELECT * FROM tasks WHERE created>=? OR archived=0').bind(start),db().prepare('SELECT task,actor,label,created FROM events WHERE task IN ('+scope+') ORDER BY created').bind(start),db().prepare('SELECT * FROM facilities ORDER BY id')]);
+ return json(summarize(result[0].results as unknown as Task[],result[1].results as unknown as ServiceEvent[],result[2].results as unknown as Facility[],now,days));
+}
 export async function act(req:Request){
  sameOrigin(req);const a=await account(req);const b=await body(req);if(typeof b.id!=='string'||typeof b.action!=='string'||!Number.isInteger(b.version))throw new HttpError(400,'操作参数无效');
  const t=await db().prepare('SELECT * FROM tasks WHERE id=?').bind(b.id).first<Task>();if(!t)throw new HttpError(404,'任务不存在');if(!canView(a,t))throw new HttpError(403,'无权访问此任务');if(t.version!==b.version)throw new HttpError(409,'任务已被其他设备更新，请查看最新状态');
@@ -72,4 +81,4 @@ export async function admin(req:Request){
  await db().batch([db().prepare('INSERT INTO events SELECT lower(hex(randomblob(16))),id,?,?,? FROM tasks WHERE archived=0').bind(a.id,'管理员重置演示场景，记录已归档',now),db().prepare("UPDATE tasks SET archived=1,status=CASE WHEN status IN ('completed','cancelled') THEN status ELSE 'cancelled' END,version=version+1,updated=? WHERE archived=0").bind(now),db().prepare("UPDATE facilities SET status='healthy',updated=?").bind(now),db().prepare('INSERT INTO audit VALUES (?,?,?,?)').bind(crypto.randomUUID(),a.id,'重置演示场景并归档任务',now)]);
  }else throw new HttpError(400,'未知管理操作');return json({ok:true});
 }
-export async function handle(req:Request,kind:string){try{if(kind==='login')return await login(req);if(kind==='logout')return await logout(req);if(kind==='state')return await state(req);if(kind==='tasks')return await createTask(req);if(kind==='action')return await act(req);if(kind==='admin')return await admin(req);return json({error:'接口不存在'},404);}catch(e){if(e instanceof HttpError)return json({error:e.message},e.status);console.error('Route Rescue API failure',e instanceof Error?e.message:'unknown');return json({error:'服务暂不可用，请稍后重试'},503);}}
+export async function handle(req:Request,kind:string){try{if(kind==='login')return await login(req);if(kind==='logout')return await logout(req);if(kind==='state')return await state(req);if(kind==='insights')return await insights(req);if(kind==='tasks')return await createTask(req);if(kind==='action')return await act(req);if(kind==='admin')return await admin(req);return json({error:'接口不存在'},404);}catch(e){if(e instanceof HttpError)return json({error:e.message},e.status);console.error('Route Rescue API failure',e instanceof Error?e.message:'unknown');return json({error:'服务暂不可用，请稍后重试'},503);}}
