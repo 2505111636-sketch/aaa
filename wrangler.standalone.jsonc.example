@@ -1,9 +1,0 @@
-{
-  "name": "route-rescue",
-  "main": "dist/server/index.js",
-  "compatibility_date": "2026-05-15",
-  "compatibility_flags": ["nodejs_compat"],
-  "no_bundle": true,
-  "assets": { "directory": "dist/client" },
-  "d1_databases": [{"binding":"DB","database_name":"route-rescue-db","database_id":"REPLACE_WITH_YOUR_D1_DATABASE_ID"}]
-}

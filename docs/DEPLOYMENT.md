@@ -1,37 +1,30 @@
-# 部署与维护
+# 运行与部署
 
-当前正式站：https://cng6c22v2wdr.meoo.fun/ 。使用 Meoo Node.js + PostgreSQL，已通过匿名访问和线上闭环验收，用户确认关闭 VPN 后可打开。部署与免费额度详情见 [MEOO.md](MEOO.md)。
+## 本机
 
-下文保留旧 Sites/Cloudflare 版本的部署记录。原站使用 Sites 托管 React/Vinext Worker，并绑定 Cloudflare D1 服务端数据库，与当前 Meoo 数据库独立。应用为公开访问；应用内再校验虚拟演示账号。管理密码不包含在源码中。
+使用Node.js24或更新版本，按照根目录README执行 `npm ci`、`npm run setup`、`npm run build`、`npm start`。默认端口3000，监听 `0.0.0.0`。
 
-访问实测：托管返回 succeeded，生产 D1 的 6 张表已创建。真实浏览器可打开应用登录页；生产日志确认登录返回 200，随后读取共享状态返回 200。当前执行主机的命令行网络请求被 Cloudflare 边缘返回 403，所以线上完整自动接口验收不能在该网络中执行，不能声称所有比赛网络均可访问。赛前请使用评委预期网络实测；若受拦截，优先采用 [独立 Node.js + SQLite 部署方案](SELF-HOST.md)，该方案不依赖 chatgpt.site。
+SQLite默认保存在 `data/route-rescue.sqlite`。升级代码时保留 `.env` 和 `data/`；停止进程后再备份数据库及其WAL文件，或使用SQLite备份工具。不要在程序运行时只复制主数据库文件。
 
-已从 GitHub Actions 的执行网络完成正式站 17 项闭环验收，结果通过，包含生产任务写入、跨站交接、最终完成和新会话持久读取。详见 [测试记录](TESTS.md)。
+修改 `.env` 中的PORT可换端口。局域网其他设备可通过“服务器局域网IP:端口”访问同一数据库；需要系统防火墙放行对应端口。
 
-部署验收：使用未登录访问 `/passenger`、`/staff`、`/admin` 应看到应用内登录页；`GET /api/state` 应返回 401。普通账号不具有设施修改或重置权限。按 README 的三角色流程完成一轮后刷新，任务及事件应仍然存在。
+## 服务器
 
-## 独立 Cloudflare 部署（可执行替代方案）
+1. 将完整源码放到服务器，安装依赖并构建。
+2. 将 `.env` 中的维护密码改为私有强口令；固定体验账号仍用于竞赛体验。
+3. 使用进程管理器或系统服务运行 `npm start`，将 `data/` 放到持久磁盘。
+4. 通过HTTPS反向代理转发到应用端口，设置 `PUBLIC_ORIGIN=https://你的域名`，重启应用。
 
-需要拥有 Cloudflare 账号并在当地网络中可访问 Cloudflare；公共域名的中国大陆具体网络可达性须在比赛网络实测。GitHub Pages 只能托管静态页面，不能直接运行本应用的服务端权限与共享数据库。
+`PUBLIC_ORIGIN` 必须与浏览器实际访问的协议和域名一致，否则写操作会被同源校验拒绝。`/health` 用于进程存活检查，不代替云端数据库连通性检查。
 
-1. `npm ci`，安装 Node.js 24。
-2. `npx wrangler login`，登录自己的 Cloudflare 账号。
-3. `npx wrangler d1 create route-rescue-db`，记下返回的 database_id。
-4. 复制 `wrangler.standalone.jsonc.example` 为 `wrangler.standalone.jsonc`，替换 database_id。
-5. `npm run build`。
-6. 首次部署执行 `npx wrangler d1 execute DB --remote --config wrangler.standalone.jsonc --file drizzle/0000_stale_agent_brand.sql`。该迁移只首次执行；后续按新增 SQL 顺序执行。
-7. `npx wrangler secret put ADMIN_PASSWORD --config wrangler.standalone.jsonc`，交互输入管理员密码。
-8. `npx wrangler deploy --config wrangler.standalone.jsonc`，记录返回的 workers.dev 网址；也可在 Cloudflare 控制台绑定自有域名。
-9. 按上述验收流程在另一台设备和无痕浏览器验证访问。
+本整理版作为独立源码交付，不会自动替换已有正式站，也不会携带已有云资源的密码或密钥。
 
-后续更新只需检查、构建与部署；不要重新应用已执行的建表 SQL。删除 D1 数据库会丢失记录。应用的重置按钮只归档任务，不删除历史记录；如需从归档中恢复，先备份数据库再由维护人员操作。
+## PostgreSQL / Meoo
 
-## 已知适用范围
+将 `DATABASE_DRIVER` 改为 `postgres`，配置 `ROUTE_RESCUE_DB_URL`、`SUPABASE_SERVICE_ROLE_KEY` 和必要的 `MEOO_PROJECT_URL_ID`。云适配器面向兼容Supabase REST RPC的服务，调用 `route_rescue_execute`，不是直接的PostgreSQL连接字符串。
 
-这是单场景、多虚拟账号的竞赛演示。普通演示账号的密码公开；应只使用虚拟信息。不同评委登录同一个乘客账号会共享该乘客的任务，这也是跨设备演示的机制；独立体验可用 passenger02。列表读取最近 60 条当前场景任务。轮询间隔为 3 秒，后台标签页暂停轮询，重新聚焦会立即刷新。
+数据库需要已有 `route_rescue` schema 和仅服务角色可执行的参数化批次RPC。建库脚本放在 `database/postgres/setup.sql`，请由项目所有者在目标云数据库中执行，随后配置服务端环境变量。脚本不会复制旧站的任务或会话。
 
-真实运营版本需要替换演示账号为实名授权身份体系，接入真实设施数据并经过运营、安全和无障碍审核，完善多租户、消息推送、人工队列调度及长期审计归档管理。
-# 当前正式入口（Meoo）
+Meoo容器可在构建后用 `PORT=9000 npm start`；预览使用3015端口。生产必须设置HTTPS的PUBLIC_ORIGIN；如果平台预览通过可信网关转发域名，可显式设置 `APP_PREVIEW=1`，仅在预览环境使用。
 
-https://cng6c22v2wdr.meoo.fun/ 。当前发布和维护请优先参阅 [MEOO.md](MEOO.md)。下文记录原 Sites/Cloudflare 部署路径，旧站数据库与 Meoo 独立。
-
+本地模式使用 `npm run setup` 生成私有配置。重新部署云端时，应在服务商的运行时密钥管理中配置维护密码和服务角色密钥，不将 `.env` 放入源码仓库或公开文件目录。
