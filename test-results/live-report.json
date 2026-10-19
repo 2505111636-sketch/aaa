@@ -1,0 +1,77 @@
+{
+  "base": "https://cng6c22v2wdr.meoo.fun",
+  "at": "2026-10-19T10:18:07.512Z",
+  "checks": [
+    {
+      "name": "公开站点匿名请求到达应用并返回401",
+      "status": "PASS"
+    },
+    {
+      "name": "passenger01 可使用公开演示密码独立登录",
+      "status": "PASS"
+    },
+    {
+      "name": "passenger02 可使用公开演示密码独立登录",
+      "status": "PASS"
+    },
+    {
+      "name": "staffA 可使用公开演示密码独立登录",
+      "status": "PASS"
+    },
+    {
+      "name": "staffB 可使用公开演示密码独立登录",
+      "status": "PASS"
+    },
+    {
+      "name": "staffC 可使用公开演示密码独立登录",
+      "status": "PASS"
+    },
+    {
+      "name": "生产数据库可保存求助",
+      "status": "PASS"
+    },
+    {
+      "name": "生产数据按乘客隔离",
+      "status": "PASS"
+    },
+    {
+      "name": "接单竞态只有一个成功",
+      "status": "PASS"
+    },
+    {
+      "name": "准备后更新为赶往现场",
+      "status": "PASS"
+    },
+    {
+      "name": "工作人员确认到场",
+      "status": "PASS"
+    },
+    {
+      "name": "发送跨站交接",
+      "status": "PASS"
+    },
+    {
+      "name": "接收站可看到相同任务",
+      "status": "PASS"
+    },
+    {
+      "name": "接收站确认接收",
+      "status": "PASS"
+    },
+    {
+      "name": "接收站确认服务完成",
+      "status": "PASS"
+    },
+    {
+      "name": "乘客完成最终确认",
+      "status": "PASS"
+    },
+    {
+      "name": "新登录会话可读取已完成记录和时间线",
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS",
+  "total": 17,
+  "task": "2c2ca20c-4b9d-48ce-aa1d-c23226394e61"
+}

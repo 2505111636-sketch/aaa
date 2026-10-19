@@ -1,5 +1,7 @@
 # 核心功能测试记录
 
+当前 Meoo 正式站 https://cng6c22v2wdr.meoo.fun/ ：云数据库业务权限 47/47、补充事务权限 5/5、实际在线闭环 17/17 均通过；当前独立 SQLite 回归 47/47 通过。用户已确认关闭 VPN 后可以打开。对应 `test-results/meoo-*.json` 与 `test-results/live-report.json`。下文同时保留原 Sites 的历史验收。
+
 2026-10-19 验收。GitHub 自动构建与验收记录：https://github.com/2505111636-sketch/aaa/actions/runs/39191970957 （提交 bb94211c4932a4a1c0479ca99c6c77eff0abf5b5）。
 
 ## 已通过
@@ -24,3 +26,14 @@
 最初自动验收失败的原因：Windows 重新生成的可选依赖锁在 Linux 不完整；测试脚本在收到平台 Cookie 后覆盖了应用 Cookie。已保留完整依赖锁并修正为合并 Cookie；后续上述构建和验收均通过。未修改生产权限规则来迁就测试。
 
 实际截图另附于交付 outputs 目录，区分本地独立版本与线上页面。接口测试是会改变演示场景的测试；不要对真实运营数据运行。
+# Meoo 新站验收（2026-10-19）
+
+- Meoo PostgreSQL 业务与权限：47/47 通过，报告 `test-results/meoo-api-report.json`。
+- 匿名权限、特殊字符绑定、失败事务回滚和受保护配置函数：5/5 通过，报告 `test-results/meoo-storage.json`。
+- 新站实际在线闭环：17/17 通过，报告 `test-results/live-report.json`。
+- 匿名首页、各角色入口和 JS/CSS 返回 200，匿名数据接口返回应用自身的 401，无平台登录跳转，报告 `test-results/meoo-access-report.json`。
+- 用户关闭 VPN 后确认新站可打开；该结论限于用户实测网络，现场须复测。
+- 当前 SQLite 版本接口回归：47/47 通过；TypeScript、模型、Cookie 与 UUID 检查通过。
+
+以下保留原 Sites 与独立服务的验收记录。
+

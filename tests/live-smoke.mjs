@@ -1,7 +1,7 @@
 import {mergeCookies} from './cookies.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-const base=process.env.BASE_URL||'https://route-rescue-accessible.red-sage-5554.chatgpt.site';
+const base=process.env.BASE_URL||'https://cng6c22v2wdr.meoo.fun';
 const cookies={},checks=[];let created;
 async function request(who,route,data,expected=200){const r=await fetch(base+'/api/'+route,{method:data===undefined?'GET':'POST',headers:{...(data===undefined?{}:{'Content-Type':'application/json',Origin:base}),...(cookies[who]?{Cookie:cookies[who]}:{})},body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(15000)});const raw=await r.text();let b;try{b=JSON.parse(raw);}catch{throw new Error(`Hosting returned ${r.status} instead of JSON; network/edge access check failed`);}assert.equal(r.status,expected,`${who} ${route}: ${JSON.stringify(b)}`);cookies[who]=mergeCookies(cookies[who],r.headers.getSetCookie());return b;}
 async function check(name,fn){await fn();checks.push({name,status:'PASS'});console.log('PASS '+name);}

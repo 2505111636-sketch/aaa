@@ -20,8 +20,8 @@ class Statement {
  all(){return {success:true,results:sqlite.prepare(this.sql).all(...this.args)};}
  run(){const r=sqlite.prepare(this.sql).run(...this.args);return {success:true,results:[],meta:{changes:Number(r.changes)}};}
 }
-const DB={prepare:(sql:string)=>new Statement(sql),batch:(statements:Statement[])=>{
+const DB={prepare:(sql:string)=>new Statement(sql),batch:async(statements:Statement[])=>{
  sqlite.exec('BEGIN IMMEDIATE');
- try{const results=statements.map(s=>s.run());sqlite.exec('COMMIT');return results;}catch(e){sqlite.exec('ROLLBACK');throw e;}
+ try{const results=statements.map(s=>/^SELECT\b/i.test(s.sql)?s.all():s.run());sqlite.exec('COMMIT');return results;}catch(e){sqlite.exec('ROLLBACK');throw e;}
 }};
 export const env={DB:DB as unknown as D1Database,ADMIN_PASSWORD:process.env.ADMIN_PASSWORD};

@@ -2,14 +2,25 @@ import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import {handle} from '../dist-standalone/server/handler.mjs';
-if(!process.env.ADMIN_PASSWORD){console.error('ADMIN_PASSWORD is required; set a private admin password.');process.exit(1);}
-const publicDir=path.resolve('dist-standalone/client');
+import {pathToFileURL} from 'node:url';
+const bundle=process.env.APP_BUNDLE_DIR||'dist-standalone';
+const {handle}=await import(pathToFileURL(path.resolve(bundle,'server/handler.mjs')));
+if(!process.env.ADMIN_PASSWORD&&!/^[a-f0-9]{64}$/.test(process.env.ADMIN_PASSWORD_HASH||'')){console.error('A private admin password or server-only password verifier is required.');process.exit(1);}
+if(process.env.MEOO_REQUIRE_SECURE_ORIGIN==='1'&&!process.env.PUBLIC_ORIGIN?.startsWith('https://'))throw new Error('The Meoo public HTTPS origin is not configured');
+const publicDir=path.resolve(bundle,'client');
 const mimes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const server=http.createServer(async(req,res)=>{
  try{
-  const origin=process.env.PUBLIC_ORIGIN?new URL(process.env.PUBLIC_ORIGIN).origin:`http://${req.headers.host}`;
+  const preview=process.env.APP_PREVIEW==='1';
+  const forwardedHost=preview&&req.headers['x-forwarded-host'];
+  const previewHost=typeof forwardedHost==='string'?forwardedHost.split(',')[0].trim():req.headers.host;
+  const previewProtocol=preview&&req.headers['x-forwarded-proto']==='https'?'https':'http';
+  const origin=process.env.PUBLIC_ORIGIN?new URL(process.env.PUBLIC_ORIGIN).origin:`${previewProtocol}://${previewHost}`;
   const url=new URL(req.url,origin);
+  if(url.pathname==='/__portable-health'&&process.env.ROUTE_RESCUE_PORTABLE_ID){
+   res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});
+   res.end(JSON.stringify({app:'route-rescue',installation:process.env.ROUTE_RESCUE_PORTABLE_ID}));return;
+  }
   if(url.pathname.startsWith('/api/')){
    const kind=url.pathname.slice(5);
    if(req.method==='GET'&&kind!=='state'||!['GET','POST'].includes(req.method)||!['login','logout','state','tasks','action','admin'].includes(kind)||req.method==='POST'&&kind==='state'){res.writeHead(404,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'接口不存在'}));return;}
@@ -27,5 +38,6 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='HEAD'){res.end();return;}fs.createReadStream(file).pipe(res);
  }catch(e){console.error('Node server error',e.message);if(!res.headersSent)res.writeHead(500,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'服务暂不可用，请稍后重试'}));}
 });
-const port=Number(process.env.PORT||3000);server.listen(port,'0.0.0.0',()=>console.log(`Route Rescue standalone: http://127.0.0.1:${port}`));
+const port=Number(process.env.PORT||3000);server.listen(port,process.env.HOST||'0.0.0.0',()=>console.log(`Route Rescue server: http://127.0.0.1:${port}`));
 for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));
+export {server};

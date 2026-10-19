@@ -3,6 +3,7 @@ import {useEffect,useRef,useState,type ReactNode} from 'react';
 import maps from '../design/assets.json';
 import geometry from '../design/geometry.json';
 import {stations,demoAccounts,statusNames,locations,needOptions,type Account,type Task} from '../lib/model';
+import {requestId as newRequestId} from '../lib/request-id';
 type Facility={id:string;station:string;name:string;status:string;updated:number};
 type Event={id:string;task:string;actor:string;label:string;created:number};
 type Snapshot={account:Account;facilities:Facility[];tasks:Task[];events:Event[];serverTime:number};
@@ -36,7 +37,7 @@ export default function App({initialRole}:{initialRole?:Role}){
  const fault=data?.facilities.find(f=>f.id==='A-E2')?.status==='fault';
  const pageTitle=!user?'每一程，都有接应':user.role==='admin'?'演示场景管理':user.role==='staff'?(selected?'接应任务':'今日接应任务'):screen==='plans'?'选择恢复方案':screen==='location'?'确认当前位置':screen==='help'?'帮助与说明':screen==='mine'?'我的服务记录':active?(active.status==='pending'?'等待接应':'旅程恢复中'):screen==='journey'&&tasks[0]?.status==='completed'?'已抵达目的地':'当前旅程';
  async function action(t:Task,a:string){await run(async()=>{await api('action',{id:t.id,version:t.version,action:a});await refresh();setMessage('服务进度已更新，其他设备将同步显示');setModal('');});}
- async function submit(){await run(async()=>{requestId.current ||= crypto.randomUUID();const r=await api('tasks',{id:requestId.current,location,needs,note,plan});await refresh();setSelected(r.id);setScreen('journey');requestId.current='';setMessage('求助已发送，请在安全位置等候');});}
+ async function submit(){await run(async()=>{requestId.current ||= newRequestId();const r=await api('tasks',{id:requestId.current,location,needs,note,plan});await refresh();setSelected(r.id);setScreen('journey');requestId.current='';setMessage('求助已发送，请在安全位置等候');});}
  async function manage(payload:unknown){await run(async()=>{await api('admin',payload);await refresh();setMessage('演示场景已更新');setModal('');});}
  function facilityCards(){return <div className="facility-grid">{data?.facilities.map((f,i)=><div key={f.id} className={'facility '+(f.status==='fault'?'fault':'ok')}><Icon node={i===2?'1:1676':'1:149'} name={i===2?'imgFrame2':'imgIcon8'}/><strong>{stations[f.station]} · {f.name}</strong><Badge tone={f.status==='fault'?'danger':'success'}>{f.status==='fault'?'故障停运':'可通行'}</Badge><small>{time(f.updated)} 更新 · 模拟</small></div>)}</div>;}
  function timeline(t:Task){const events=data?.events.filter(e=>e.task===t.id)||[];return <Card><div className="section-title"><span className="icon-disc"><Icon node="1:23" name="imgIcon"/></span><div><h2>服务状态</h2><p>每一步进展，双端同步</p></div><Badge>{statusNames[t.status]}</Badge></div><ol className="timeline">{events.map(e=><li key={e.id}><i>✓</i><div><strong>{e.label}</strong><small>{time(e.created)} · {demoAccounts.find(a=>a.id===e.actor)?.name||'系统'}</small></div></li>)}</ol></Card>;}

@@ -14,17 +14,21 @@ export async function account(req:Request):Promise<Account>{
 export function sameOrigin(req:Request){const origin=req.headers.get('origin');if(origin!==new URL(req.url).origin||req.headers.get('sec-fetch-site')==='cross-site')throw new HttpError(403,'请求来源校验失败');}
 export async function body(req:Request){if(!req.headers.get('content-type')?.includes('application/json'))throw new HttpError(415,'请使用 JSON 请求');if(Number(req.headers.get('content-length'))>4096)throw new HttpError(413,'提交内容过长');const reader=req.body?.getReader();let bytes=0;const chunks:Uint8Array[]=[];if(reader){while(true){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>4096){await reader.cancel();throw new HttpError(413,'提交内容过长');}chunks.push(value);}}const raw=new Uint8Array(bytes);let offset=0;for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.length;}try{const parsed=JSON.parse(new TextDecoder().decode(raw));if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new Error();return parsed;}catch{throw new HttpError(400,'请求格式无效');}}
 export function json(data:unknown,status=200,extra:Record<string,string>={}){return Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extra}});}
-async function seed(){await db().batch([
+let seeding:Promise<void>|undefined;
+async function seed(){if(!seeding)seeding=db().batch([
  db().prepare("INSERT OR IGNORE INTO facilities VALUES ('A-E2','A','2号电梯','healthy',?)").bind(Date.now()),
  db().prepare("INSERT OR IGNORE INTO facilities VALUES ('B-E1','B','1号电梯','healthy',?)").bind(Date.now()),
- db().prepare("INSERT OR IGNORE INTO facilities VALUES ('C-R1','C','无障碍坡道','healthy',?)").bind(Date.now())]);}
+ db().prepare("INSERT OR IGNORE INTO facilities VALUES ('C-R1','C','无障碍坡道','healthy',?)").bind(Date.now())]).then(()=>{}).catch(error=>{seeding=undefined;throw error;});await seeding;}
 export async function login(req:Request){
  sameOrigin(req);const b=await body(req);if(typeof b.username!=='string'||typeof b.password!=='string'||b.username.length>30||b.password.length>128)throw new HttpError(400,'账号或密码格式无效');
  const key=await hash((req.headers.get('cf-connecting-ip')||'local')+':'+b.username);const now=Date.now();
  await db().prepare('INSERT INTO login_limits(key,count,until) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN until<? THEN 1 ELSE count+1 END,until=CASE WHEN until<? THEN ? ELSE until END').bind(key,now+600000,now,now,now+600000).run();
  const limit=await db().prepare('SELECT count FROM login_limits WHERE key=?').bind(key).first<{count:number}>();if((limit?.count||0)>15)throw new HttpError(429,'尝试次数较多，请在 10 分钟后重试');
  const a=demoAccounts.find(x=>x.id===b.username);const configured=(env as unknown as Record<string,string>).ADMIN_PASSWORD;
- const expected=a?.role==='admin'?configured:'Route2026!';if(!a||!expected||!await equal(b.password,expected))throw new HttpError(401,'账号或密码不正确');
+ const configuredHash=(env as unknown as Record<string,string>).ADMIN_PASSWORD_HASH;
+ const expected=a?.role==='admin'?configured:'Route2026!';
+ const valid=expected?await equal(b.password,expected):a?.role==='admin'&&/^[a-f0-9]{64}$/.test(configuredHash||'')&&await equal(await hash(b.password),configuredHash);
+ if(!a||!valid)throw new HttpError(401,'账号或密码不正确');
  const token=crypto.randomUUID()+crypto.randomUUID();await db().batch([db().prepare('DELETE FROM sessions WHERE expires<?').bind(now),db().prepare('INSERT INTO sessions VALUES (?,?,?)').bind(await hash(token),a.id,now+12*3600000),db().prepare('DELETE FROM login_limits WHERE until<?').bind(now)]);await seed();
  return json({account:a},200,{'Set-Cookie':`rr_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=43200${new URL(req.url).protocol==='https:'?'; Secure':''}`});
 }
@@ -33,10 +37,12 @@ export async function state(req:Request){
  const a=await account(req);await seed();
  let q='SELECT * FROM tasks WHERE archived=0';const binds:string[]=[];
  if(a.role==='passenger'){q+=' AND passenger=?';binds.push(a.id);}else if(a.role==='staff'){q+=" AND (origin=? OR (target=? AND status IN ('handoff_pending','handoff_received','awaiting_confirmation','completed')))";binds.push(a.station,a.station);}
- const rows=(await db().prepare(q+' ORDER BY created DESC LIMIT 60').bind(...binds).all<Task>()).results;
+ const selected=q+' ORDER BY created DESC,id DESC LIMIT 60';
+ const eventQuery='SELECT * FROM events WHERE task IN ('+selected.replace('SELECT * FROM tasks','SELECT id FROM tasks')+') ORDER BY created,id';
+ const results=await db().batch([db().prepare(selected).bind(...binds),db().prepare(eventQuery).bind(...binds),db().prepare('SELECT * FROM facilities ORDER BY id')]);
+ const rows=results[0].results as unknown as Task[];
  const taskRows=rows.map(t=>({...t,unassigned:isUnassigned(t,Date.now())}));
- const eventRows=taskRows.length?(await db().prepare(`SELECT * FROM events WHERE task IN (${taskRows.map(()=>'?').join(',')}) ORDER BY created,id`).bind(...taskRows.map(t=>t.id)).all()).results:[];
- return json({account:a,facilities:(await db().prepare('SELECT * FROM facilities ORDER BY id').all()).results,tasks:taskRows,events:eventRows,serverTime:Date.now(),simulation:true});
+ return json({account:a,facilities:results[2].results,tasks:taskRows,events:results[1].results,serverTime:Date.now(),simulation:true});
 }
 export async function createTask(req:Request){
  sameOrigin(req);const a=await account(req);if(a.role!=='passenger')throw new HttpError(403,'仅乘客可提交求助');const b=await body(req);

@@ -13,7 +13,9 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "build:standalone": "node scripts/build-standalone.mjs",
-    "start:standalone": "node server/node.mjs"
+    "start:standalone": "node server/node.mjs",
+    "package:portable": "node scripts/package-portable.mjs",
+    "build:meoo": "node scripts/build-standalone.mjs --meoo"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

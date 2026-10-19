@@ -54,7 +54,11 @@ next-env.d.ts
 
 /dist/
 /dist-standalone/
+/dist-meoo/
+/.meoo/
+/src/supabase/
 /data/
+/release/
 /.wrangler/
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/

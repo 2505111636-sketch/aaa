@@ -1,10 +1,12 @@
 # Route Rescue 无障碍行程恢复协同系统
 
+Windows 现场交付可使用包含 Node.js 与 SQLite 的 [离线运行包](docs/PORTABLE.md)，完整解压后双击启动，无需安装依赖或连接云服务。维护者执行 `npm run build:standalone` 后，可用 `npm run package:portable -- --node=本机node.exe路径 --license=Node官方LICENSE路径 --source=源码ZIP路径` 生成文件夹；打包时不包含 data 目录和线上管理员凭据。
+
 无障碍服务：基于用户 Figma「无障碍出行」设计开发，面向全国大学生数字媒体科技作品及创意竞赛的移动与网络应用开发类赛项。第一版使用 3 个模拟站点、3 项模拟设施、虚拟乘客和工作人员信息。
 
-正式入口：https://route-rescue-accessible.red-sage-5554.chatgpt.site
+正式入口：https://cng6c22v2wdr.meoo.fun/
 
-访问说明：浏览器已可打开并登录，当前命令行网络受到 Cloudflare 403 拦截。比赛网络可达性须赛前实测；仓库另外提供 [独立 Node.js + SQLite / Docker 部署](docs/SELF-HOST.md)，可部署到自己的服务器。
+访问说明：Meoo 新站公开首页及各角色入口均无需平台账号，登录使用下列应用演示账号。2026-10-19 线上 17 项闭环测试通过，用户已确认关闭 VPN 后可以正常打开。比赛现场仍应复测所用网络。共享记录保存到 Meoo PostgreSQL；[Meoo 部署说明](docs/MEOO.md) 记录环境、权限和免费套餐限制。仓库同时提供 [独立 Node.js + SQLite / Docker 部署](docs/SELF-HOST.md)。原 Sites 网址保留为旧版，数据库相互独立。
 
 | 入口 | 账号 | 演示密码 |
 | --- | --- | --- |
@@ -51,13 +53,13 @@ node tests/api.mjs
 
 ## 实现与权限
 
-React 19 + TypeScript + Vinext/Vite + Cloudflare Workers + D1 SQLite。数据库迁移由 Drizzle 生成。Figma 素材全部本地保存，使用普通 CSS 响应式布局，无在线字体或临时素材 URL 依赖。
+React 19 + TypeScript + Vinext/Vite。当前 Meoo 正式站使用 Node.js + PostgreSQL；工程同时支持 Cloudflare Workers + D1、独立 Node.js + SQLite。Figma 素材全部本地保存，使用普通 CSS 响应式布局，无在线字体或临时素材 URL 依赖。
 
 - 乘客只读取、操作自己的任务与事件；工作人员仅读取本站源任务和已经交接给本站的任务。
 - 只有源站工作人员可接单；只有指定目标站可确认接收；只有接收工作人员可确认完成；最后必须乘客确认。
 - 服务端状态机校验每次动作，使用版本号进行乐观并发控制。D1 事务批次保证任务更新和事件记录一致；唯一索引阻止同一乘客的重复活动请求。
 - HttpOnly/SameSite Cookie 中只有随机会话令牌，数据库保存令牌 SHA-256，12小时过期。生产 Cookie 使用 Secure。所有写请求校验同源与 JSON 输入；登录有失败频率限制。
-- 管理密码仅从服务器 ADMIN_PASSWORD 密钥读取；不在公开源码和前端中。管理操作有审计记录；重置采用归档。
+- 管理密码来自服务端运行时密钥；Meoo 容器通过受保护的配置函数取得单向校验值。不在公开源码和前端中。管理操作有审计记录；重置采用归档。
 - 加载骨架、空列表、失败提示与重试、取消确认、无人接单、跨站接收等待、完成确认等状态均有对应界面。表单有标签、键盘焦点、提示区域、原生对话框和减少动态效果支持。
 
 主要代码：`app/rescue-app.tsx` 界面与交互；`app/globals.css` 样式；`lib/model.ts` 状态机；`lib/server.ts` 服务端；`db/schema.ts` 数据模型；`drizzle/` 数据库迁移；`tests/` 自动化用例。

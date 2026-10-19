@@ -1,0 +1,18 @@
+[tools]
+node = "24.19.0"
+
+[tasks.install]
+run = "npm ci --no-audit --no-fund"
+
+[tasks.dev]
+run = "node scripts/serve-meoo.mjs --preview --host 0.0.0.0 --port 3015"
+
+[tasks.build]
+run = "node scripts/build-standalone.mjs --meoo"
+
+[tasks.start]
+run = "node scripts/serve-meoo.mjs --host 0.0.0.0 --port 9000"
+
+[meoo.deploy]
+mode = "server"
+port = 9000

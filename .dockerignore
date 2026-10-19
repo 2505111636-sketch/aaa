@@ -8,6 +8,9 @@ node_modules
 .next
 dist
 dist-standalone
+dist-meoo
+.meoo
+src/supabase
 data
 test-results
 design/downloads.json
